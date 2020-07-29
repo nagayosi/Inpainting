@@ -36,7 +36,6 @@ lats_df = np.unique(df['lat'].values)[::-1]
 
 #maps = pickle.load(open(path+"maps_amp.pickle"))
 
-#pdb.set_trace()
 excel = pd.read_excel(path+"site_schema_20200322A.xlsx")
 
 # exist points
@@ -75,7 +74,7 @@ for p in p_ex:
     inds_ex.append([i,j])
 inds_ex = np.array(inds_ex)
 
-# expand inds_ex
+# expand inds_ex (L1)
 new_inds = []
 rad = int(sys.argv[1])
 SAVE_DIR = path + "L1-rad{}".format(rad)+os.sep
@@ -89,7 +88,8 @@ for p in inds_ex:
                 new_inds.append(np.array([p[0]-rx,p[1]+ry]))
                 new_inds.append(np.array([p[0]-rx,p[1]-ry]))
                 new_inds.append(np.array([p[0]+rx,p[1]-ry]))
-#pdb.set_trace()
+
+
 inds_ex = np.unique(new_inds,axis=0).transpose()
 
 # make mask image
