@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 import pandas as pd
 import glob
 import pdb
 import numpy as np
-import seaborn as sns
+#import seaborn as sns
 import pickle
 import matplotlib.pylab as plt
 import cv2
@@ -19,11 +20,16 @@ def scale(x,s=[0,7],t=[0,1]):
 
     return res
 
-def cmap(x,sta=[255,0,56],end=[0,0,255]): #x:scalar ,sta,end:[B,G,R]
+def cmap(x,sta=[255,0,56],end=[0,0,255]): #x:scalar , sta,end:[B,G,R]
     vec = np.array(end) - np.array(sta)
     res = sta+scale(x)*vec
     return res
 
+def ll2ij(point,starts,dist): # point=[lon,lat] , starts=[lon_st,lat_st] , dist=[lon_dis,lat_dis]
+    i = (point[0]-starts[0])/dist[0]
+    j = (point[1]-starts[1])/dist[1]
+    return [i,j]
+    
 
 
 # datファイルの一覧を取得
@@ -43,12 +49,11 @@ p_ex = np.array([excel['lon'].values,excel['lat'].values])
 
 # interval of simulated points
 dis_lon = lons_df[1]-lons_df[0]
-dis_lat = lats_df[1]-lats_df[0]
+dis_lat = lats_df[0]-lats_df[1]
 
 # start and end points of simulation
-st = [np.min(lons_df),np.min(lats_df)]
+st = np.array([np.min(lons_df),np.min(lats_df)])
 en = [np.max(lons_df),np.max(lats_df)]
-
 
 # cut points over simulation range
 
@@ -63,7 +68,26 @@ keep_ind.append(uni[counts_lat>=2])
 
 keep_ind = np.unique(np.concatenate(keep_ind))
 
-p_ex = p_ex[:,keep_ind].transpose()
+p_ex = p_ex[:,keep_ind].transpose() #[N,2]
+
+
+p_df = np.array([df['lon'].values,df['lat'].values]).transpose() # [M,2]
+
+rad = float(sys.argv[1])  # pixel
+
+#pdb.set_trace()
+# scaling [lon_s~lon_e,lat_s~lat_e] -> [0~507,0~517]
+xy_df = (p_df - np.tile(st[np.newaxis], (p_df.shape[0],1)))/np.array([dis_lon,dis_lat])
+xy_ex = (p_ex - np.tile(st[np.newaxis], (p_ex.shape[0],1)))/np.array([dis_lon,dis_lat])
+
+n = xy_ex.shape[0]
+m = xy_df.shape[0]
+
+# calculate distances
+dists = np.tile(xy_df,(n,1)) - np.reshape(np.tile(xy_ex,(1,m)),[n*m,2])
+dists = np.linalg.norm(dists, ord=2, axis=1)
+
+p_ex = p_df[np.unique( np.where(dists<=rad)[0] % m )]
 
 
 # points lon,lat ->  indexs i,j
@@ -72,14 +96,14 @@ for p in p_ex:
     i = np.abs(lons_df-p[0]).argmin()
     j = np.abs(lats_df-p[1]).argmin()
     inds_ex.append([i,j])
-inds_ex = np.array(inds_ex)
+#pdb.set_trace()
+inds_ex = np.array(inds_ex).transpose()
 
+"""
 # expand inds_ex (L1)
 new_inds = []
 rad = int(sys.argv[1])
-SAVE_DIR = path + "L1-rad{}".format(rad)+os.sep
-if not os.path.isdir(SAVE_DIR):
-    os.makedirs(SAVE_DIR)
+
 for p in inds_ex:
     for rx in range(rad+1):
         for ry in range(rad+1):
@@ -88,13 +112,13 @@ for p in inds_ex:
                 new_inds.append(np.array([p[0]-rx,p[1]+ry]))
                 new_inds.append(np.array([p[0]-rx,p[1]-ry]))
                 new_inds.append(np.array([p[0]+rx,p[1]-ry]))
+"""
+#inds_ex = np.unique(new_inds,axis=0).transpose()
 
-
-inds_ex = np.unique(new_inds,axis=0).transpose()
 
 # make mask image
 mask = np.ones([len(lats_df),len(lons_df),3])*255
-#pdb.set_trace()
+
 count = 0
 for ind in range(len(df)):
     #pdb.set_trace()
@@ -105,17 +129,20 @@ for ind in range(len(df)):
     if not (latInd in inds_ex[1][np.where(inds_ex[0]==lonInd)[0]]): # not Exist
         count += 1
         mask[latInd,lonInd] = np.array([0,0,0])
-#pdb.set_trace()
+pdb.set_trace()
 mask = mask.astype("uint8")
-cv2.imwrite(SAVE_DIR+f"mask.png",mask)
+cv2.imwrite(path+"mask_L2-rad{}.png".format(rad),mask)
 
+SAVE_DIR = path + "amp_map"+os.sep
+if not os.path.isdir(SAVE_DIR):
+    os.makedirs(SAVE_DIR)
 
 # make amp-map images
 maps = []
 names = []
 # datファイルのループ
 for file in files:
-    print(f"loading {file}")
+    print("loading {}".format(file))
     #pdb.set_trace()
 
     # datファイルの読み込み
@@ -163,9 +190,9 @@ for file in files:
     #plt.savefig(f"{fname}.png")
     #plt.close()
     #pdb.set_trace()
-    cv2.imwrite(SAVE_DIR+f"{fname}.png",map)
+    cv2.imwrite(SAVE_DIR+fname+".png",map)
 
-pickle.dump([np.array(maps),np.array(masks),names],open(SAVE_DIR+"maps_amp_L1-rad{}.pickle".format(rad),"wb"))
-pickle.dump(names,open(SAVE_DIR+"names_L1-rad{}.pickle".format(rad),"wb"))
+#pickle.dump([np.array(maps),np.array(masks),names],open(SAVE_DIR+"maps_amp_L1-rad{}.pickle".format(rad),"wb"))
+#pickle.dump(names,open(SAVE_DIR+"names_L1-rad{}.pickle".format(rad),"wb"))
 
 
