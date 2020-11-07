@@ -51,14 +51,14 @@ class CuPyPredicter:
         self.ynormRange = cp.asarray(model.ynormRange)
 
     def predict_normalized(self,x): # x:shape=[2]
-        Psi=cp.exp(-cp.sum(self.theta*cp.power((cp.abs(self.X-x[cp.newaxis,:])),self.pl)))
+        Psi=cp.exp(-cp.sum(self.theta*cp.power((cp.abs(self.X-x[cp.newaxis,:])),self.pl),axis=1))
         z = self.y-self.one.dot(self.mu)
-        a = cp.linalg.solve(self.U.T, z)
-        b = cp.linalg.solve(self.U, a)
-        c = Psi.T.dot(b)
+        aaa = cp.linalg.solve(self.U.T, z)
+        bbb = cp.linalg.solve(self.U, aaa)
+        ccc = Psi.T.dot(bbb)
 
-        f=self.mu + c
-        return f
+        fff = self.mu + ccc
+        return fff 
 
     def predict(self,X): # X:shape=[2] 出力はNumpy
         X = self.normX(cp.asarray(X))
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     samplePath = "data"+os.sep+"test_sample"
     dataPath = "data"+os.sep+"SeismicCoefficient"
     
-    pred_num = 10
+    pred_num = 5
     exi = int(sys.argv[1]) # 実験番号
 
     testData = pickle.load(open("data/raw_testData.pickle","rb"))
@@ -133,8 +133,9 @@ if __name__ == "__main__":
         k.train()
         train_time = time.time() - stime
         print("{}sec for training".format(train_time),end=" ")
+        pickle.dump(k,open("krigingmodel{}-{}".format(exi,ite),"wb"))
 
-        pdb.set_trace()
+        #pdb.set_trace()
         Prediction = CuPyPredicter(k)
 
         def predict(xs):
