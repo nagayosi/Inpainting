@@ -58,7 +58,7 @@ class CuPyPredicter:
         c = Psi.T.dot(b)
 
         f=self.mu + c
-        return f[0]
+        return f
 
     def predict(self,X): # X:shape=[2] 出力はNumpy
         X = self.normX(cp.asarray(X))
@@ -69,7 +69,7 @@ class CuPyPredicter:
         :param X: An array of points (self.k long) in physical world units
         :return X: An array normed to our model range of [0,1] for each dimension
         '''
-        return cp.array( (X - self.normRange[0][0]) / float(self.normRange[0][1] - self.normRange[0][0]) )
+        return cp.array( (X - self.normRange[0,0]) / float(self.normRange[0,1] - self.normRange[0,0]) )
 
     def inversenormy(self, y):
         '''
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     samplePath = "data"+os.sep+"test_sample"
     dataPath = "data"+os.sep+"SeismicCoefficient"
     
-    pred_num = 6
+    pred_num = 10
     exi = int(sys.argv[1]) # 実験番号
 
     testData = pickle.load(open("data/raw_testData.pickle","rb"))
@@ -109,42 +109,47 @@ if __name__ == "__main__":
     inds = np.where(maskImg*seaImg>0)
     inds = [inds[0][np.newaxis],inds[1][np.newaxis]]
 
-    X = np.concatenate(inds,axis=0).T #入力点 shape=[N,2]
+    X = np.concatenate(inds,axis=0).T.astype("float32") #入力点 shape=[N,2]
     
     # 補間したい点を集める
     target_mask = seaImg
     tPoint = np.where(target_mask>0) # 補間したい点
-    tPoint = np.concatenate([tPoint[0][np.newaxis],tPoint[1][np.newaxis]]).T # shape=[M,2]
+    tPoint = np.concatenate([tPoint[0][np.newaxis],tPoint[1][np.newaxis]]).T.astype("float32") # shape=[M,2]
     pnum = int(np.sum(target_mask/255)) # 1枚の画像内にある予測しないといけない点の数
     
     startFlag = True
 
     pred_imgs= []
-    
+
     # 範囲ごとのMAEを保存するリスト
     maes, mae0, mae05_2, maes_sep = [],[],[],[]
     for ite,img in enumerate(testImg):
         print("{} of {} images".format(ite+1,testImg.shape[0]))
         y = img[maskImg*seaImg>0]
         
+        #pdb.set_trace()
         stime = time.time()
         k = kriging(X, y, name='InpaintingKriging')
         k.train()
         train_time = time.time() - stime
+        print("{}sec for training".format(train_time),end=" ")
 
+        pdb.set_trace()
         Prediction = CuPyPredicter(k)
 
         def predict(xs):
             res = np.zeros_like(img)
-            for j,p in enumerate(xs):
-                print("\r predict ite:{}-point:{} ".format(ite+1,j),end="")
-                res[p[0],p[1]] = Prediction.predict([p[0],p[1]])
+            for iterate,p in enumerate(xs):
+                print("\r predict ite:{}-point:{} ".format(ite+1,iterate),end="")
+                i = int(p[0])
+                j = int(p[1])
+                res[i,j] = Prediction.predict([p[0],p[1]])
             return res
 
         # predict
         stime = time.time()
         pred = predict(tPoint)
-        print("{}sec for training, {}sec for predict".format(train_time,time.time()-stime))
+        print("{}sec for predict".format(time.time()-stime))
         pred_imgs.append(pred)
 
         # 補間結果をプロットして保存
