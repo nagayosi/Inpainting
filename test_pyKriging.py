@@ -49,14 +49,13 @@ class CuPyPredicter:
         self.X = cp.asarray(model.X) # [n,2]
         self.normRange = cp.asarray(model.normRange)
         self.ynormRange = cp.asarray(model.ynormRange)
+        z = self.y-self.one.dot(self.mu)
+        aaa = cp.linalg.solve(self.U.T, z)
+        self.bbb = cp.linalg.solve(self.U, aaa)
 
     def predict_normalized(self,x): # x:shape=[2]
         Psi=cp.exp(-cp.sum(self.theta*cp.power((cp.abs(self.X-x[cp.newaxis,:])),self.pl),axis=1))
-        z = self.y-self.one.dot(self.mu)
-        aaa = cp.linalg.solve(self.U.T, z)
-        bbb = cp.linalg.solve(self.U, aaa)
-        ccc = Psi.T.dot(bbb)
-
+        ccc = Psi.T.dot(self.bbb)
         fff = self.mu + ccc
         return fff 
 
