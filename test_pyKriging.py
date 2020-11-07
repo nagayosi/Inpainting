@@ -93,14 +93,18 @@ if __name__ == "__main__":
     
     pred_num = 5
     exi = int(sys.argv[1]) # 実験番号
+    #=============
+    exi_s = int(sys.argv[2]) # 開始位置
+    #=============
+
 
     testData = pickle.load(open("data/raw_testData.pickle","rb"))
     testImg = testData["amp"]
     # 一部を実験
-    if pred_num*(exi+1)>testImg.shape[0]:
-        testImg = testImg[pred_num*exi:]
+    if exi_s + pred_num*(exi+1)>testImg.shape[0]:
+        testImg = testImg[exi_s + pred_num*exi:]
     else:
-        testImg = testImg[pred_num*exi:pred_num*(exi+1)]
+        testImg = testImg[exi_s + pred_num*exi:exi_s + pred_num*(exi+1)]
     testImg[testImg>8] = 8
     testImg = testImg/8
     testNames = testData["name"]
@@ -133,13 +137,13 @@ if __name__ == "__main__":
         k.train()
         train_time = time.time() - stime
         print("{}sec for training".format(train_time),end=" ")
-        pickle.dump(k,open("krigingmodel{}-{}".format(exi,ite),"wb"))
+        pickle.dump(k,open("krigingmodel{}-{}".format(exi,ite+exi_s),"wb"))
 
         #pdb.set_trace()
         Prediction = CuPyPredicter(k)
 
         def predict(xs):
-            res = np.zeros_like(img)
+            res = np.zeros_like(img).astype("float32")
             for iterate,p in enumerate(xs):
                 print("\r predict ite:{}-point:{} ".format(ite+1,iterate),end="")
                 i = int(p[0])
