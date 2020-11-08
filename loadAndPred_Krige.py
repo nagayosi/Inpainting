@@ -129,7 +129,7 @@ if __name__=="__main__":
     
     for iteration,exp_id in enumerate(exi_list):
         print("ite{}".format(iteration))
-        k = pickle.load(open("krigingmodel{}".format(exp_id),"rb"))
+        k = pickle.load(open("models/krigingmodel{}".format(exp_id),"rb"))
         Prediction = CuPyPredicter(k)
 
         def predict(xs):
